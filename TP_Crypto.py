@@ -4,6 +4,10 @@ import random
 import hashlib
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from tkinter import ttk
+from PIL import Image, ImageTk
+from itertools import count, cycle
+
 
 class RSA:
     def __init__(self):
@@ -245,7 +249,7 @@ class RSA_OAEP:
                 key[k] = int(v, 16)
         return key
         
-    def encrypt_file(self, input_file, output_file, public_key_file):
+    def encrypt_file(self, input_file, output_file, public_key_file, progress_callback=None):
         """Encrypt a file using RSA-OAEP"""
         # Load public key
         public_key = self.load_key_from_file(public_key_file)
@@ -254,6 +258,8 @@ class RSA_OAEP:
         with open(input_file, 'rb') as f:
             plaintext = f.read()
             
+        bytes_processed = 0
+        
         # Calculate RSA modulus byte length
         modulus_bytes_len = (public_key['n'].bit_length() + 7) // 8
         
@@ -279,15 +285,21 @@ class RSA_OAEP:
             encrypted_bytes = encrypted_int.to_bytes(modulus_bytes_len, byteorder='big')
             encrypted_chunks.append(encrypted_bytes)
             
+            bytes_processed += len(chunk)
+            if progress_callback:
+                progress_callback(bytes_processed)
+            
         # Write encrypted data to output file
         with open(output_file, 'wb') as f:
             for chunk in encrypted_chunks:
                 f.write(chunk)
                 
-    def decrypt_file(self, input_file, output_file, private_key_file):
+    def decrypt_file(self, input_file, output_file, private_key_file, progress_callback=None):
         """Decrypt a file using RSA-OAEP"""
         # Load private key
         private_key = self.load_key_from_file(private_key_file)
+        
+        bytes_processed = 0
         
         # Calculate RSA modulus byte length
         modulus_bytes_len = (private_key['n'].bit_length() + 7) // 8
@@ -322,6 +334,10 @@ class RSA_OAEP:
             except ValueError as e:
                 print(f"Decryption error in chunk {i // modulus_bytes_len}: {str(e)}")
                 return False
+                
+            bytes_processed += len(chunk)
+            if progress_callback:
+                progress_callback(bytes_processed)
             
         # Write decrypted data to output file
         with open(output_file, 'wb') as f:
@@ -331,60 +347,217 @@ class RSA_OAEP:
         return True
 
 
-# Simple GUI
+# Add this class to handle GIF animation
+path = "Xwl7.gif"  # Path to your loading GIF
+class AnimatedGIF(tk.Label):
+    def __init__(self, master, path):
+        tk.Label.__init__(self, master)
+        self.frames = None
+        self.load(path)
+
+    def load(self, path):
+        im = Image.open(path)
+        frames = []
+        try:
+            for i in count(1):
+                frames.append(ImageTk.PhotoImage(im.copy()))
+                im.seek(i)
+        except EOFError:
+            pass
+        self.frames = cycle(frames)
+        self.frame_count = len(frames)
+        
+        try:
+            self.delay = im.info['duration']
+        except:
+            self.delay = 100
+
+        if len(frames) == 1:
+            self.config(image=next(self.frames))
+        else:
+            self.next_frame()
+
+    def next_frame(self):
+        if self.frames:
+            self.config(image=next(self.frames))
+            self.after(self.delay, self.next_frame)
+
+    def stop(self):
+        self.frames = None
+        self.config(image='')
+
+
+# Modify the RSA_OAEP_GUI class __init__ method to add the loading GIF
 class RSA_OAEP_GUI:
     def __init__(self, root):
         self.root = root
         self.root.title("RSA-OAEP Encryption/Decryption")
-        self.root.geometry("500x300")
+        self.root.geometry("800x400")  # Increased width for better layout
         self.crypto = RSA_OAEP()
         
-        # Create frames
-        self.key_frame = tk.Frame(root)
-        self.key_frame.pack(pady=10)
+        # Main container with left alignment
+        self.main_container = tk.Frame(root)
+        self.main_container.pack(side=tk.LEFT, padx=20, pady=10, fill=tk.BOTH)
         
-        self.encrypt_frame = tk.Frame(root)
-        self.encrypt_frame.pack(pady=10)
+        # Title
+        tk.Label(self.main_container, text="RSA-OAEP Encryption/Decryption", font=('Helvetica', 12, 'bold')).pack(anchor=tk.W)
         
-        self.decrypt_frame = tk.Frame(root)
-        self.decrypt_frame.pack(pady=10)
+        # Key Generation Section
+        self.key_frame = tk.LabelFrame(self.main_container, text="Key Generation", padx=5, pady=5)
+        self.key_frame.pack(fill=tk.X, pady=(10,5))
         
-        # Key generation
         self.key_button = tk.Button(self.key_frame, text="Generate Key Pair (2048-bit)", command=self.generate_keys)
-        self.key_button.pack()
+        self.key_button.pack(anchor=tk.W)
         
-        # Encryption
-        tk.Label(self.encrypt_frame, text="Encryption").pack()
-        self.encrypt_file_button = tk.Button(self.encrypt_frame, text="Select File to Encrypt", command=self.select_encrypt_file)
-        self.encrypt_file_button.pack(side=tk.LEFT, padx=5)
+        # Encryption Section
+        self.encrypt_frame = tk.LabelFrame(self.main_container, text="Encryption", padx=5, pady=5)
+        self.encrypt_frame.pack(fill=tk.X, pady=5)
         
-        self.public_key_button = tk.Button(self.encrypt_frame, text="Select Public Key", command=self.select_public_key)
-        self.public_key_button.pack(side=tk.LEFT, padx=5)
+        # File selection row
+        file_row = tk.Frame(self.encrypt_frame)
+        file_row.pack(fill=tk.X, pady=2)
+        self.encrypt_file_button = tk.Button(file_row, text="Select File", width=12, command=self.select_encrypt_file)
+        self.encrypt_file_button.pack(side=tk.LEFT)
+        self.encrypt_path_label = tk.Label(file_row, text="No file selected", padx=5)
+        self.encrypt_path_label.pack(side=tk.LEFT, fill=tk.X)
         
-        self.encrypt_button = tk.Button(self.encrypt_frame, text="Encrypt", command=self.encrypt_file)
-        self.encrypt_button.pack(side=tk.LEFT, padx=5)
+        # Key selection row
+        key_row = tk.Frame(self.encrypt_frame)
+        key_row.pack(fill=tk.X, pady=2)
+        self.public_key_button = tk.Button(key_row, text="Select Key", width=12, command=self.select_public_key)
+        self.public_key_button.pack(side=tk.LEFT)
+        self.public_key_label = tk.Label(key_row, text="No public key selected", padx=5)
+        self.public_key_label.pack(side=tk.LEFT, fill=tk.X)
         
-        # Decryption
-        tk.Label(self.decrypt_frame, text="Decryption").pack()
-        self.decrypt_file_button = tk.Button(self.decrypt_frame, text="Select File to Decrypt", command=self.select_decrypt_file)
-        self.decrypt_file_button.pack(side=tk.LEFT, padx=5)
+        # Encrypt button
+        self.encrypt_button = tk.Button(self.encrypt_frame, text="Encrypt File", width=12, command=self.encrypt_file)
+        self.encrypt_button.pack(anchor=tk.W, pady=(5,0))
         
-        self.private_key_button = tk.Button(self.decrypt_frame, text="Select Private Key", command=self.select_private_key)
-        self.private_key_button.pack(side=tk.LEFT, padx=5)
+        # Decryption Section
+        self.decrypt_frame = tk.LabelFrame(self.main_container, text="Decryption", padx=5, pady=5)
+        self.decrypt_frame.pack(fill=tk.X, pady=5)
         
-        self.decrypt_button = tk.Button(self.decrypt_frame, text="Decrypt", command=self.decrypt_file)
-        self.decrypt_button.pack(side=tk.LEFT, padx=5)
+        # File selection row
+        dec_file_row = tk.Frame(self.decrypt_frame)
+        dec_file_row.pack(fill=tk.X, pady=2)
+        self.decrypt_file_button = tk.Button(dec_file_row, text="Select File", width=12, command=self.select_decrypt_file)
+        self.decrypt_file_button.pack(side=tk.LEFT)
+        self.decrypt_path_label = tk.Label(dec_file_row, text="No file selected", padx=5)
+        self.decrypt_path_label.pack(side=tk.LEFT, fill=tk.X)
         
-        # File paths
+        # Key selection row
+        dec_key_row = tk.Frame(self.decrypt_frame)
+        dec_key_row.pack(fill=tk.X, pady=2)
+        self.private_key_button = tk.Button(dec_key_row, text="Select Key", width=12, command=self.select_private_key)
+        self.private_key_button.pack(side=tk.LEFT)
+        self.private_key_label = tk.Label(dec_key_row, text="No private key selected", padx=5)
+        self.private_key_label.pack(side=tk.LEFT, fill=tk.X)
+        
+        # Decrypt button
+        self.decrypt_button = tk.Button(self.decrypt_frame, text="Decrypt File", width=12, command=self.decrypt_file)
+        self.decrypt_button.pack(anchor=tk.W, pady=(5,0))
+        
+        # Progress Section
+        self.progress_frame = tk.LabelFrame(self.main_container, text="Progress", padx=5, pady=5)
+        self.progress_frame.pack(fill=tk.X, pady=5)
+        
+        # Progress elements frame
+        self.progress_elements = tk.Frame(self.progress_frame)
+        self.progress_elements.pack(fill=tk.X)
+        
+        # Left side: Loading GIF
+        self.loading_label = None  # Will hold the AnimatedGIF instance
+        
+        # Right side: Progress information
+        self.progress_info = tk.Frame(self.progress_elements)
+        self.progress_info.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+        
+        self.progress_label = tk.Label(self.progress_info, text="")
+        self.progress_label.pack(anchor=tk.W)
+        
+        self.progress_bar = ttk.Progressbar(
+            self.progress_info,
+            orient='horizontal',
+            length=400,
+            mode='determinate'
+        )
+        self.progress_bar.pack(fill=tk.X, pady=(5,0))
+        
+        # Initialize file paths
         self.encrypt_file_path = None
         self.decrypt_file_path = None
         self.public_key_path = None
         self.private_key_path = None
+
+    # Update the label update methods
+    def select_encrypt_file(self):
+        self.encrypt_file_path = filedialog.askopenfilename(title="Select File to Encrypt")
+        if self.encrypt_file_path:
+            filename = os.path.basename(self.encrypt_file_path)
+            self.encrypt_path_label.config(text=filename)
+    
+    def select_public_key(self):
+        self.public_key_path = filedialog.askopenfilename(
+            title="Select Public Key",
+            filetypes=[("Text files", "*.txt")]
+        )
+        if self.public_key_path:
+            filename = os.path.basename(self.public_key_path)
+            self.public_key_label.config(text=filename)
+    
+    def select_decrypt_file(self):
+        self.decrypt_file_path = filedialog.askopenfilename(title="Select File to Decrypt")
+        if self.decrypt_file_path:
+            filename = os.path.basename(self.decrypt_file_path)
+            self.decrypt_path_label.config(text=filename)
+    
+    def select_private_key(self):
+        self.private_key_path = filedialog.askopenfilename(
+            title="Select Private Key",
+            filetypes=[("Text files", "*.txt")]
+        )
+        if self.private_key_path:
+            filename = os.path.basename(self.private_key_path)
+            self.private_key_label.config(text=filename)
+
+    def show_progress(self, process_name):
+        """Show progress bar and loading animation"""
+        if self.loading_label is None:
+            # Create and add the loading animation
+            self.loading_label = AnimatedGIF(self.progress_elements, "loading.gif")
+            self.loading_label.pack(side=tk.LEFT, padx=5)
+        
+        self.progress_label.config(text=f"{process_name} in progress...")
+        self.progress_bar["value"] = 0
+        self.progress_bar.pack()
+        self.root.update()
+        
+    def update_progress(self, value):
+        """Update progress bar value"""
+        self.progress_bar["value"] = value
+        self.root.update()
+        
+    def hide_progress(self):
+        """Hide progress bar and stop loading animation"""
+        if self.loading_label:
+            self.loading_label.stop()
+            self.loading_label.destroy()
+            self.loading_label = None
+            
+        self.progress_label.config(text="")
+        self.progress_bar["value"] = 0
+        self.root.update()
         
     def generate_keys(self):
         """Generate and save RSA key pair"""
         try:
+            self.show_progress("Key Generation")
+            
+            # Generate keys
+            self.update_progress(20)
             public_key, private_key = self.crypto.generate_keypair(2048)
+            
+            self.update_progress(40)
             
             # Save public key
             public_key_file = filedialog.asksaveasfilename(
@@ -393,36 +566,32 @@ class RSA_OAEP_GUI:
                 filetypes=[("Text files", "*.txt")]
             )
             if not public_key_file:
+                self.hide_progress()
                 return
                 
+            self.update_progress(60)    
             self.crypto.save_key_to_file(public_key, public_key_file)
             
             # Save private key
+            self.update_progress(80)
             private_key_file = filedialog.asksaveasfilename(
                 title="Save Private Key",
                 defaultextension=".txt",
                 filetypes=[("Text files", "*.txt")]
             )
             if not private_key_file:
+                self.hide_progress()
                 return
                 
             self.crypto.save_key_to_file(private_key, private_key_file)
             
+            self.update_progress(100)
+            self.hide_progress()
             messagebox.showinfo("Success", "Key pair generated and saved successfully!")
             
         except Exception as e:
+            self.hide_progress()
             messagebox.showerror("Error", f"Failed to generate keys: {str(e)}")
-    
-    def select_encrypt_file(self):
-        """Select file to encrypt"""
-        self.encrypt_file_path = filedialog.askopenfilename(title="Select File to Encrypt")
-    
-    def select_public_key(self):
-        """Select public key file"""
-        self.public_key_path = filedialog.askopenfilename(
-            title="Select Public Key",
-            filetypes=[("Text files", "*.txt")]
-        )
     
     def encrypt_file(self):
         """Encrypt selected file"""
@@ -442,21 +611,29 @@ class RSA_OAEP_GUI:
             return
             
         try:
-            self.crypto.encrypt_file(self.encrypt_file_path, output_file, self.public_key_path)
+            self.show_progress("Encryption")
+            
+            # Get file size for progress calculation
+            file_size = os.path.getsize(self.encrypt_file_path)
+            
+            def progress_callback(bytes_processed):
+                progress = (bytes_processed / file_size) * 100
+                self.update_progress(progress)
+            
+            # Modify encrypt_file to accept progress callback
+            self.crypto.encrypt_file(
+                self.encrypt_file_path, 
+                output_file, 
+                self.public_key_path,
+                progress_callback
+            )
+            
+            self.hide_progress()
             messagebox.showinfo("Success", "File encrypted successfully!")
+            
         except Exception as e:
+            self.hide_progress()
             messagebox.showerror("Error", f"Encryption failed: {str(e)}")
-    
-    def select_decrypt_file(self):
-        """Select file to decrypt"""
-        self.decrypt_file_path = filedialog.askopenfilename(title="Select File to Decrypt")
-    
-    def select_private_key(self):
-        """Select private key file"""
-        self.private_key_path = filedialog.askopenfilename(
-            title="Select Private Key",
-            filetypes=[("Text files", "*.txt")]
-        )
     
     def decrypt_file(self):
         """Decrypt selected file"""
@@ -475,12 +652,31 @@ class RSA_OAEP_GUI:
             return
             
         try:
-            success = self.crypto.decrypt_file(self.decrypt_file_path, output_file, self.private_key_path)
+            self.show_progress("Decryption")
+            
+            # Get file size for progress calculation
+            file_size = os.path.getsize(self.decrypt_file_path)
+            
+            def progress_callback(bytes_processed):
+                progress = (bytes_processed / file_size) * 100
+                self.update_progress(progress)
+            
+            # Modify decrypt_file to accept progress callback
+            success = self.crypto.decrypt_file(
+                self.decrypt_file_path, 
+                output_file, 
+                self.private_key_path,
+                progress_callback
+            )
+            
+            self.hide_progress()
             if success:
                 messagebox.showinfo("Success", "File decrypted successfully!")
             else:
                 messagebox.showerror("Error", "Decryption failed: Invalid ciphertext or key")
+                
         except Exception as e:
+            self.hide_progress()
             messagebox.showerror("Error", f"Decryption failed: {str(e)}")
 
 
