@@ -347,8 +347,6 @@ class RSA_OAEP:
         return True
 
 
-# Add this class to handle GIF animation
-path = "Xwl7.gif"  # Path to your loading GIF
 class AnimatedGIF(tk.Label):
     def __init__(self, master, path):
         tk.Label.__init__(self, master)
@@ -387,19 +385,17 @@ class AnimatedGIF(tk.Label):
         self.config(image='')
 
 
-# Modify the RSA_OAEP_GUI class __init__ method to add the loading GIF
+
 class RSA_OAEP_GUI:
     def __init__(self, root):
         self.root = root
         self.root.title("RSA-OAEP Encryption/Decryption")
-        self.root.geometry("800x400")  # Increased width for better layout
+        self.root.geometry("800x400") 
         self.crypto = RSA_OAEP()
         
-        # Main container with left alignment
         self.main_container = tk.Frame(root)
         self.main_container.pack(side=tk.LEFT, padx=20, pady=10, fill=tk.BOTH)
         
-        # Title
         tk.Label(self.main_container, text="RSA-OAEP Encryption/Decryption", font=('Helvetica', 12, 'bold')).pack(anchor=tk.W)
         
         # Key Generation Section
