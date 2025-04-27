@@ -82,14 +82,17 @@ class RSA:
             raise Exception("Modular inverse does not exist")
         else:
             return x % m
-            
+
+    #ENCRYPT Function        
     def encrypt(self, message, public_key):
         """Encrypt message using RSA public key"""
         e, n = public_key['e'], public_key['n']
-        c = pow(message, e, n)
+        c = pow(message, e, n) # Ciphertext= Plain(Message)^e mod n
         return c
-        
+
+    #DECRYPT Function    
     def decrypt(self, ciphertext, private_key):
+        #Plain(Message)=Ciphertet^d mod n
         """Decrypt ciphertext using RSA private key with Chinese Remainder Theorem optimization"""
         d, n = private_key['d'], private_key['n']
         p, q = private_key['p'], private_key['q']

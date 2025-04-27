@@ -5,7 +5,7 @@ import os
 class OAEP:
     def __init__(self, hash_function=hashlib.sha256, hash_len=32):
         self.hash_function = hash_function
-        self.hash_len = hash_len  # SHA-256 output length in bytes
+        self.hash_len = hash_len  # SHA-256 output length in bytes in this case 32 bytes output = 256 bit Hash output length
     
     def mgf1(self, seed, length):
         """Mask Generation Function based on hash function"""
@@ -36,11 +36,11 @@ class OAEP:
         # Generate a random seed
         seed = os.urandom(hlen)
         
-        # Generate padding string PS
+        # Generate padding string PS 
         ps_len = k - mlen - 2 * hlen - 2
         ps = b'\x00' * ps_len
         
-        # Concatenate to form data block
+        # Concatenate to form data block 
         db = self.hash_function(b'').digest() + ps + b'\x01' + message
         
         # Calculate masked db
