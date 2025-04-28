@@ -13,19 +13,18 @@ class RSA_OAEP:
         self.rsa = RSA()
         self.oaep = OAEP()
         
+    # Generate RSA key pair
     def generate_keypair(self, bits=2048):
-        """Generate RSA key pair"""
         return self.rsa.generate_keypair(bits)
         
+    # Save key to a hex-formatted text file
     def save_key_to_file(self, key, filename):
-        """Save key to a hex-formatted text file"""
         with open(filename, 'w') as f:
             # Convert dictionary to hex strings
             for k, v in key.items():
                 f.write(f"{k}:{hex(v)[2:]}\n")
     
     def load_key_from_file(self, filename):
-        """Load key from a hex-formatted text file"""
         key = {}
         with open(filename, 'r') as f:
             for line in f:
@@ -33,8 +32,8 @@ class RSA_OAEP:
                 key[k] = int(v, 16)
         return key
         
+    # Encrypt
     def encrypt_file(self, input_file, output_file, public_key_file, progress_callback=None):
-        """Encrypt a file using RSA-OAEP"""
         # Load public key
         public_key = self.load_key_from_file(public_key_file)
         
@@ -44,8 +43,8 @@ class RSA_OAEP:
             
         bytes_processed = 0
         
-                # Get original file extension
-        original_extension = os.path.splitext(input_file)[1].encode()  # contoh: b'.mp4'
+        # Get original file extension
+        original_extension = os.path.splitext(input_file)[1].encode() 
         if not original_extension:
             original_extension = b'.bin'  # kalau tidak ada ekstensi
 
@@ -63,7 +62,7 @@ class RSA_OAEP:
         # Maximum size of data that can be encrypted in one block
         max_chunk_size = modulus_bytes_len - 2 * self.oaep.hash_len - 2
         
-        # Process file in chunks
+        # Process file in chunks, we pad by chunks
         encrypted_chunks = []
         
         for i in range(0, len(plaintext), max_chunk_size):
@@ -90,7 +89,8 @@ class RSA_OAEP:
         with open(output_file, 'wb') as f:
             for chunk in encrypted_chunks:
                 f.write(chunk)
-                
+
+    # Decrypt        
     def decrypt_file(self, input_file, output_file, private_key_file, progress_callback=None):
         # Load private key
         private_key = self.load_key_from_file(private_key_file)
@@ -128,12 +128,11 @@ class RSA_OAEP:
         # Gabungkan semua potongan
         full_plaintext = b''.join(decrypted_chunks)
 
-        # --- Baca header ---
+        # Read the header
         ext_len = full_plaintext[0]
         original_extension = full_plaintext[1:1+ext_len].decode()
         real_plaintext = full_plaintext[1+ext_len:]
 
-        # --- Sesuaikan output file ---
         base_output = output_file
         if base_output.endswith('.enc'):
             base_output = base_output[:-4]
@@ -146,6 +145,10 @@ class RSA_OAEP:
         return True
 
 
+
+
+
+### ---------- GUI ---------- ###
 class AnimatedGIF(tk.Label):
     def __init__(self, master, path):
         tk.Label.__init__(self, master)
@@ -432,8 +435,8 @@ class RSA_OAEP_GUI:
             self.hide_progress()
             messagebox.showerror("Error", f"Encryption failed: {str(e)}")
     
+    # Decrypt selected file
     def decrypt_file(self):
-        """Decrypt selected file"""
         if not self.decrypt_file_path:
             messagebox.showerror("Error", "No file selected for decryption!")
             return

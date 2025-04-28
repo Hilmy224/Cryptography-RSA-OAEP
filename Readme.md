@@ -6,6 +6,9 @@
 ## RSA Implementation
 - **Key Size:** 2048-bit keys by default
 - **Public Exponent (e):** Fixed at 65537
+    >Reasons:
+    - For e higher than 65537 would make it slower, whilst generally a high number is safer. 
+    https://crypto.stackexchange.com/questions/3110/impacts-of-not-using-rsa-exponent-of-65537
 - **Optimization:** Uses Chinese Remainder Theorem (CRT) for faster decryption
 
 ## OAEP Implementation
@@ -27,7 +30,7 @@ pip install -r requirements.txt
 
 
 ## How to Use
-Run `main.py` and gui with the following options will appear:
+Run `main.py` and gui with the following options will appear (Recommend full screening to see the progress bar):
 
 ### Key Generation
 1. Click **Generate Key Pair** to create a new 2048-bit RSA key pair.
@@ -78,13 +81,13 @@ qinv:bba0fbbaeb0062e9fade29f01618e380c41a1fbd33d81a17817af9df2d0d2a90d47c0423573
 
 ### Encrypted Files
 - **Input:** Any file type.
-- **Output:** Binary file with RSA-OAEP encrypted content.
+- **Output:** Binary file with RSA-OAEP encrypted content. The original file extension is attached to the header.
 - **Default Extension:** `.enc` (but any extension can be used).
 
 ### Decrypted Files
-- **Input:** Must be a file previously encrypted with this tool.
+- **Input:** Must be a file previously encrypted with this tool. The header is then read for the extension.
 - **Output:** Identical to the original file before encryption in binary format.
-- **Extension:** User specified (no default extension).
+- **Extension:** Depends on the header (no default extension).
 
 ---
 
@@ -123,3 +126,4 @@ The way it works are the CRT components are calculated during key generation and
 Related Source:
 + [link](https://en.wikipedia.org/wiki/Optimal_asymmetric_encryption_padding)
 + [link2](https://www.rfc-editor.org/rfc/rfc3447#section-7.1.1)
++ [link3](https://crypto.stackexchange.com/questions/3110/impacts-of-not-using-rsa-exponent-of-65537) 
