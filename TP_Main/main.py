@@ -45,8 +45,9 @@ class RSA_OAEP:
         
         # Get original file extension
         original_extension = os.path.splitext(input_file)[1].encode() 
+        # If no file extension is provided, use .bin
         if not original_extension:
-            original_extension = b'.bin'  # kalau tidak ada ekstensi
+            original_extension = b'.bin'  
 
         # Prepare header: length(1 byte) + extension (max 255 bytes)
         if len(original_extension) > 255:
@@ -263,8 +264,8 @@ class RSA_OAEP_GUI:
         self.progress_elements = tk.Frame(self.progress_frame)
         self.progress_elements.pack(fill=tk.X)
         
-        # Left side: Loading GIF
-        self.loading_label = None  # Will hold the AnimatedGIF instance
+        # loading.gif
+        self.loading_label = None  
         
         # Right side: Progress information
         self.progress_info = tk.Frame(self.progress_elements)
@@ -319,7 +320,6 @@ class RSA_OAEP_GUI:
             self.private_key_label.config(text=filename)
 
     def show_progress(self, process_name):
-        """Show progress bar and loading animation"""
         if self.loading_label is None:
             # Create and add the loading animation
             self.loading_label = AnimatedGIF(self.progress_elements, "loading.gif")
@@ -331,12 +331,10 @@ class RSA_OAEP_GUI:
         self.root.update()
         
     def update_progress(self, value):
-        """Update progress bar value"""
         self.progress_bar["value"] = value
         self.root.update()
-        
+
     def hide_progress(self):
-        """Hide progress bar and stop loading animation"""
         if self.loading_label:
             self.loading_label.stop()
             self.loading_label.destroy()
@@ -346,8 +344,8 @@ class RSA_OAEP_GUI:
         self.progress_bar["value"] = 0
         self.root.update()
         
+    # Generate and save RSA key pair
     def generate_keys(self):
-        """Generate and save RSA key pair"""
         try:
             self.show_progress("Key Generation")
             
@@ -391,8 +389,8 @@ class RSA_OAEP_GUI:
             self.hide_progress()
             messagebox.showerror("Error", f"Failed to generate keys: {str(e)}")
     
+    # Encrypt selected file
     def encrypt_file(self):
-        """Encrypt selected file"""
         if not self.encrypt_file_path:
             messagebox.showerror("Error", "No file selected for encryption!")
             return

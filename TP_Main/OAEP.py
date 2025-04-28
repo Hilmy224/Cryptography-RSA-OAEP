@@ -4,11 +4,12 @@ import os
 
 class OAEP:
     def __init__(self, hash_function=hashlib.sha256, hash_len=32):
+        # SHA-256 output length in bytes in this case 32 bytes output = 256 bit Hash output length
         self.hash_function = hash_function
-        self.hash_len = hash_len  # SHA-256 output length in bytes in this case 32 bytes output = 256 bit Hash output length
+        self.hash_len = hash_len  
     
+    # Mask Generation Function based on hash function
     def mgf1(self, seed, length):
-        """Mask Generation Function based on hash function"""
         result = b''
         counter = 0
         

@@ -100,14 +100,16 @@ class RSA:
         else:
             return x % m
 
-    #ENCRYPT Function     
+    # ENCRYPT Function     
     # Encrypt message using RSA public key   
     def encrypt(self, message, public_key):
         e, n = public_key['e'], public_key['n']
-        c = pow(message, e, n) # Ciphertext= Plain(Message)^e mod n
+
+        # Ciphertext= Plain(Message)^e mod n
+        c = pow(message, e, n)
         return c
 
-    #DECRYPT Function    
+    # DECRYPT Function    
     # Decrypt ciphertext using RSA private key with Chinese Remainder Theorem optimization
     def decrypt(self, ciphertext, private_key):
         # 1. Extract pre-computed CRT components
