@@ -1,4 +1,3 @@
-
 import random
 
 
@@ -24,9 +23,22 @@ class RSA:
         # Compute private key d (modular multiplicative inverse of e modulo phi)
         d = self._mod_inverse(e, phi)
         
+        # Pre-compute CRT components
+        dp = d % (p - 1)
+        dq = d % (q - 1)
+        qinv = self._mod_inverse(q, p)
+        
         # Return public and private key pairs
         public_key = {'e': e, 'n': n}
-        private_key = {'d': d, 'n': n, 'p': p, 'q': q}  # Include p, q for CRT optimization
+        private_key = {
+            'd': d, 
+            'n': n, 
+            'p': p, 
+            'q': q,
+            'dp': dp,
+            'dq': dq,
+            'qinv': qinv
+        }
         
         return public_key, private_key
 
@@ -91,13 +103,12 @@ class RSA:
         
     def decrypt(self, ciphertext, private_key):
         """Decrypt ciphertext using RSA private key with Chinese Remainder Theorem optimization"""
-        d, n = private_key['d'], private_key['n']
-        p, q = private_key['p'], private_key['q']
-        
-        # CRT optimization
-        dp = d % (p - 1)
-        dq = d % (q - 1)
-        qinv = self._mod_inverse(q, p)
+        # Extract pre-computed CRT components
+        p = private_key['p']
+        q = private_key['q']
+        dp = private_key['dp']
+        dq = private_key['dq']
+        qinv = private_key['qinv']
         
         # Compute message modulo p
         m1 = pow(ciphertext % p, dp, p)

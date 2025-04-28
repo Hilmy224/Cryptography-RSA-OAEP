@@ -44,6 +44,19 @@ class RSA_OAEP:
             
         bytes_processed = 0
         
+                # Get original file extension
+        original_extension = os.path.splitext(input_file)[1].encode()  # contoh: b'.mp4'
+        if not original_extension:
+            original_extension = b'.bin'  # kalau tidak ada ekstensi
+
+        # Prepare header: length(1 byte) + extension (max 255 bytes)
+        if len(original_extension) > 255:
+            raise ValueError("File extension too long!")
+        header = len(original_extension).to_bytes(1, 'big') + original_extension
+
+        # Insert header at the beginning
+        plaintext = header + plaintext
+
         # Calculate RSA modulus byte length
         modulus_bytes_len = (public_key['n'].bit_length() + 7) // 8
         
@@ -79,55 +92,57 @@ class RSA_OAEP:
                 f.write(chunk)
                 
     def decrypt_file(self, input_file, output_file, private_key_file, progress_callback=None):
-        """Decrypt a file using RSA-OAEP"""
         # Load private key
         private_key = self.load_key_from_file(private_key_file)
-        
+
         bytes_processed = 0
-        
-        # Calculate RSA modulus byte length
+
         modulus_bytes_len = (private_key['n'].bit_length() + 7) // 8
-        
-        # Read encrypted file
+
         with open(input_file, 'rb') as f:
             ciphertext = f.read()
-            
-        # Process file in chunks
+
         decrypted_chunks = []
-        
+
         for i in range(0, len(ciphertext), modulus_bytes_len):
             chunk = ciphertext[i:i + modulus_bytes_len]
-            
+
             if len(chunk) != modulus_bytes_len:
-                # Skip incomplete block at the end if any
                 break
-                
-            # Convert to integer
+
             chunk_int = int.from_bytes(chunk, byteorder='big')
-            
-            # RSA decrypt
             decrypted_int = self.rsa.decrypt(chunk_int, private_key)
-            
-            # Convert to bytes of fixed length
             decrypted_bytes = decrypted_int.to_bytes(modulus_bytes_len, byteorder='big')
-            
-            # Remove OAEP padding
+
             try:
                 unpadded = self.oaep.unpad(decrypted_bytes, modulus_bytes_len)
                 decrypted_chunks.append(unpadded)
             except ValueError as e:
                 print(f"Decryption error in chunk {i // modulus_bytes_len}: {str(e)}")
                 return False
-                
+
             bytes_processed += len(chunk)
             if progress_callback:
                 progress_callback(bytes_processed)
-            
-        # Write decrypted data to output file
-        with open(output_file, 'wb') as f:
-            for chunk in decrypted_chunks:
-                f.write(chunk)
-                
+
+        # Gabungkan semua potongan
+        full_plaintext = b''.join(decrypted_chunks)
+
+        # --- Baca header ---
+        ext_len = full_plaintext[0]
+        original_extension = full_plaintext[1:1+ext_len].decode()
+        real_plaintext = full_plaintext[1+ext_len:]
+
+        # --- Sesuaikan output file ---
+        base_output = output_file
+        if base_output.endswith('.enc'):
+            base_output = base_output[:-4]
+
+        output_file_with_ext = base_output + original_extension
+
+        with open(output_file_with_ext, 'wb') as f:
+            f.write(real_plaintext)
+
         return True
 
 
@@ -384,11 +399,14 @@ class RSA_OAEP_GUI:
             return
             
         output_file = filedialog.asksaveasfilename(
-            title="Save Encrypted File",
-            defaultextension=".enc"
+            title="Save Encrypted File"
         )
         if not output_file:
             return
+            
+        # Force add .enc extension
+        if not output_file.endswith('.enc'):
+            output_file = output_file + '.enc'
             
         try:
             self.show_progress("Encryption")
@@ -399,11 +417,10 @@ class RSA_OAEP_GUI:
             def progress_callback(bytes_processed):
                 progress = (bytes_processed / file_size) * 100
                 self.update_progress(progress)
-            
-            # Modify encrypt_file to accept progress callback
+    
             self.crypto.encrypt_file(
                 self.encrypt_file_path, 
-                output_file, 
+                output_file,
                 self.public_key_path,
                 progress_callback
             )
@@ -424,28 +441,31 @@ class RSA_OAEP_GUI:
         if not self.private_key_path:
             messagebox.showerror("Error", "No private key selected!")
             return
-            
+        
         output_file = filedialog.asksaveasfilename(
             title="Save Decrypted File"
         )
         if not output_file:
             return
+
+        # Remove .enc from output file if input had it
+        if self.decrypt_file_path.endswith('.enc') and output_file.endswith('.enc'):
+            output_file = output_file[:-4]
             
         try:
             self.show_progress("Decryption")
             
-            # Get file size for progress calculation
+            # Get file size for progress calculation  
             file_size = os.path.getsize(self.decrypt_file_path)
             
             def progress_callback(bytes_processed):
                 progress = (bytes_processed / file_size) * 100
                 self.update_progress(progress)
-            
-            # Modify decrypt_file to accept progress callback
+    
             success = self.crypto.decrypt_file(
-                self.decrypt_file_path, 
-                output_file, 
-                self.private_key_path,
+                self.decrypt_file_path,
+                output_file,
+                self.private_key_path, 
                 progress_callback
             )
             
