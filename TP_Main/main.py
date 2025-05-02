@@ -34,62 +34,93 @@ class RSA_OAEP:
         
     # Encrypt
     def encrypt_file(self, input_file, output_file, public_key_file, progress_callback=None):
-        # Load public key
+        # Load public key from file
         public_key = self.load_key_from_file(public_key_file)
         
-        # Read input file
+        # Read entire input file into memory
         with open(input_file, 'rb') as f:
             plaintext = f.read()
             
         bytes_processed = 0
         
-        # Get original file extension
-        original_extension = os.path.splitext(input_file)[1].encode() 
-        # If no file extension is provided, use .bin
+        # Get the original file extension (e.g., '.txt', '.pdf')
+        original_extension = os.path.splitext(input_file)[1].encode()
         if not original_extension:
-            original_extension = b'.bin'  
+            original_extension = b'.bin'  # Default extension if none is present
 
-        # Prepare header: length(1 byte) + extension (max 255 bytes)
+        # Prepare the header: 1 byte for extension length + extension bytes
         if len(original_extension) > 255:
-            raise ValueError("File extension too long!")
+            raise ValueError("File extension too long!")  # Limit extension to 255 bytes
         header = len(original_extension).to_bytes(1, 'big') + original_extension
 
-        # Insert header at the beginning
+        # Insert header at the beginning of the plaintext
         plaintext = header + plaintext
 
-        # Calculate RSA modulus byte length
+        # Calculate RSA modulus size in bytes
+        """
+        This formula calculates how many bytes are needed to represent the RSA modulus (n).
+        
+        public_key['n'].bit_length()    [This gets the number of bits in the modulus n]
+        + 7                             [This adds 7 to handle any partial bytes (rounding up)]
+        // 8                            [Integer division by 8 converts bits to bytes]
+
+        For example, with a 2048-bit RSA key, this would give you 256 bytes (2048 ÷ 8 = 256).
+        This calculation is necessary because RSA operates on numbers, but files are stored as bytes. 
+        We need to know exactly how many bytes our RSA modulus can handle to properly chunk our data.
+        """
         modulus_bytes_len = (public_key['n'].bit_length() + 7) // 8
-        
-        # Maximum size of data that can be encrypted in one block
+
+        # Calculate the maximum chunk size we can encrypt in one RSA operation
+        # (modulus size - OAEP padding overhead)
+        """
+        For a 2048-bit key using SHA-256 (hash_len = 32 bytes) == 256 - 2*32 - 2 = 190 bytes
+        This formula determines how much actual data we can encrypt in one RSA operation:
+
+        RSA can only encrypt a number m where 0 ≤ m < n (cannot be larger than n).
+
+        The padding consists of:
+            1 byte for the leading zero
+            32 bytes for the random seed (for SHA-256)
+            32 bytes for the hash value
+            1 byte for the separator (0x01)
+            Some padding bytes (variable)
+            The actual message
+        """
         max_chunk_size = modulus_bytes_len - 2 * self.oaep.hash_len - 2
-        
-        # Process file in chunks, we pad by chunks
+
+        # Prepare list to store encrypted chunks
         encrypted_chunks = []
         
+        # Encrypt the file in chunks
         for i in range(0, len(plaintext), max_chunk_size):
+            # Get the next chunk of plaintext
             chunk = plaintext[i:i + max_chunk_size]
             
-            # Pad using OAEP
+            # Apply OAEP padding to the chunk
             padded_chunk = self.oaep.pad(chunk, modulus_bytes_len)
             
-            # Convert to integer
+            # Convert the padded chunk into an integer for RSA encryption
             padded_int = int.from_bytes(padded_chunk, byteorder='big')
             
-            # RSA encrypt
+            # Perform RSA encryption: ciphertext = (plaintext^e) mod n
             encrypted_int = self.rsa.encrypt(padded_int, public_key)
             
-            # Convert to bytes of fixed length
+            # Convert the encrypted integer back into bytes
             encrypted_bytes = encrypted_int.to_bytes(modulus_bytes_len, byteorder='big')
+            
+            # Store the encrypted chunk
             encrypted_chunks.append(encrypted_bytes)
             
+            # Update processed bytes and report progress if a callback is provided
             bytes_processed += len(chunk)
             if progress_callback:
                 progress_callback(bytes_processed)
             
-        # Write encrypted data to output file
+        # Write all encrypted chunks into the output file
         with open(output_file, 'wb') as f:
             for chunk in encrypted_chunks:
                 f.write(chunk)
+
 
     # Decrypt        
     def decrypt_file(self, input_file, output_file, private_key_file, progress_callback=None):

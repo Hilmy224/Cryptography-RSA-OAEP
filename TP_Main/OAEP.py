@@ -8,7 +8,7 @@ class OAEP:
         self.hash_function = hash_function
         self.hash_len = hash_len  
     
-    # Mask Generation Function based on hash function
+    # Mask Generation Function based on hash function (MGF1)
     def mgf1(self, seed, length):
         result = b''
         counter = 0

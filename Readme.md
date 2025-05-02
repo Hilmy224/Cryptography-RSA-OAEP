@@ -19,6 +19,7 @@ Muhammad Radhitya Utomo         [2206830744]
 
 
 
+
 ## Installation
 
 Install all dependencies:
@@ -125,6 +126,7 @@ The way it works are the CRT components are calculated during key generation and
 
 
 Related Source:
-+ [link](https://en.wikipedia.org/wiki/Optimal_asymmetric_encryption_padding)
-+ [link2](https://www.rfc-editor.org/rfc/rfc3447#section-7.1.1)
-+ [link3](https://crypto.stackexchange.com/questions/3110/impacts-of-not-using-rsa-exponent-of-65537) 
++ [OAEP](https://en.wikipedia.org/wiki/Optimal_asymmetric_encryption_padding)
++ [RSA with OAEP](https://www.rfc-editor.org/rfc/rfc3447#section-7.1.1)
++ [MGF func](https://en.wikipedia.org/wiki/Mask_generation_function)
++ [Exponent](https://crypto.stackexchange.com/questions/3110/impacts-of-not-using-rsa-exponent-of-65537) 
